@@ -48,6 +48,17 @@ message GetCapabilitiesResponse {
   Side side = 3;                   // which half answered
   bool has_device_key = 4;         // auth usable; never the key itself
   uint32 stats_format_version = 5; // stats blob layout version, = 2
+  // Binds advertised stats/position numbering to the connected board's physical
+  // layout identity (NOT just name/keycount). Computed by firmware over the
+  // ACTIVE zmk_physical_layout exactly as served by keymap.get_physical_layouts:
+  //   input = display_name UTF-8 || 0x00 ||
+  //           for each key in DT array order: width,height,x,y,r,rx,ry as
+  //           int16 LE (0 for rotation fields when rotation not configured)
+  //   layout_fingerprint = first 8 bytes (LE u64) of SHA-256(input)
+  // Client computes the same value from the active layout of its
+  // get_physical_layouts response; mismatch => do not bind key_counts/HRM
+  // positions to that layout (positions still valid as raw indices).
+  uint64 layout_fingerprint = 6;
 }
 
 // mac = HMAC-SHA256(psk32, ASCII "GACTYL_UPDATE_V1" || 0x00 || nonce32)
