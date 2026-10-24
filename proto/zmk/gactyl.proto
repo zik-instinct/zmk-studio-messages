@@ -43,7 +43,7 @@ message Response {
 }
 
 message GetCapabilitiesResponse {
-  uint32 schema_version = 1;       // = 1
+  uint32 schema_version = 1;       // = 2
   uint32 features = 2;             // bit0 auth, bit1 remote_dfu, bit2 timings, bit3 recorder
   Side side = 3;                   // which half answered
   bool has_device_key = 4;         // auth usable; never the key itself
@@ -54,11 +54,13 @@ message GetCapabilitiesResponse {
   //   input = display_name UTF-8 || 0x00 ||
   //           for each key in DT array order: width,height,x,y,r,rx,ry as
   //           int16 LE (0 for rotation fields when rotation not configured)
-  //   layout_fingerprint = first 8 bytes (LE u64) of SHA-256(input)
+  //   fingerprint u64 = first 8 bytes (LE) of SHA-256(input), split because the
+  //   firmware builds with PB_WITHOUT_64BIT (no 64-bit wire types).
   // Client computes the same value from the active layout of its
   // get_physical_layouts response; mismatch => do not bind key_counts/HRM
   // positions to that layout (positions still valid as raw indices).
-  uint64 layout_fingerprint = 6;
+  uint32 layout_fingerprint_lo = 6; // low 32 bits of the fingerprint (LE half)
+  uint32 layout_fingerprint_hi = 7; // high 32 bits
 }
 
 // mac = HMAC-SHA256(psk32, ASCII "GACTYL_UPDATE_V1" || 0x00 || nonce32)
