@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package zmk.gactyl;
+
+// Gactyl Studio extension: stats recorder, live HRM timings, device auth, remote DFU.
+// Schema version 1. Additive only; never renumber fields.
+
+enum Side {
+  ZMK_GACTYL_SIDE_LEFT = 0;
+  ZMK_GACTYL_SIDE_RIGHT = 1;
+}
+
+message Request {
+  oneof request_type {
+    bool get_capabilities = 1;
+    SignChallengeRequest sign_challenge = 2;
+    ResetToBootloaderRequest reset_to_bootloader = 3;
+    bool get_timings = 4;
+    SetTimingsRequest set_timings = 5;
+    bool save_timings = 6;
+    bool discard_timings = 7;
+    bool reset_timings = 8;
+    StatsRequest get_stats = 9;
+    bool clear_stats = 10;
+    bool save_stats = 11;
+  }
+}
+
+message Response {
+  oneof response_type {
+    GetCapabilitiesResponse get_capabilities = 1;
+    SignChallengeResponse sign_challenge = 2;
+    bool reset_to_bootloader = 3;
+    TimingsState get_timings = 4;
+    TimingsState set_timings = 5;
+    TimingsState save_timings = 6;
+    TimingsState discard_timings = 7;
+    TimingsState reset_timings = 8;
+    StatsChunk get_stats = 9;
+    bool clear_stats = 10;
+    bool save_stats = 11;
+  }
+}
+
+message GetCapabilitiesResponse {
+  uint32 schema_version = 1;       // = 1
+  uint32 features = 2;             // bit0 auth, bit1 remote_dfu, bit2 timings, bit3 recorder
+  Side side = 3;                   // which half answered
+  bool has_device_key = 4;         // auth usable; never the key itself
+  uint32 stats_format_version = 5; // stats blob layout version, = 2
+}
+
+// mac = HMAC-SHA256(psk32, ASCII "GACTYL_UPDATE_V1" || 0x00 || nonce32)
+message SignChallengeRequest {
+  bytes nonce = 1;     // exactly 32 bytes on the wire, else meta invalid_request
+  string audience = 2; // exact "zmk.gtelem.com/update/v1", else meta invalid_request
+}
+message SignChallengeResponse {
+  bytes mac = 1; // 32 bytes
+}
+
+message ResetToBootloaderRequest {
+  Side target = 1; // LEFT: direct; RIGHT: split-BLE invoke, meta error if unlinked
+}
+
+message Timings {
+  uint32 tapping_term_ms = 1;        // 50..500
+  uint32 require_prior_idle_ms = 2;  // 0..500
+  uint32 quick_tap_ms = 3;           // 0..500 (0 = disabled)
+}
+
+message TimingsState {
+  Timings active = 1;     // volatile, applies to future presses
+  Timings persisted = 2;  // last saved
+  Timings defaults = 3;   // compiled-in
+  uint32 revision = 4;    // bumps on every accepted mutation
+}
+
+message SetTimingsRequest {
+  Timings timings = 1;
+  uint32 expected_revision = 2; // mismatch -> meta invalid_request
+}
+
+message StatsRequest {
+  uint32 offset = 1;      // byte offset into the frozen snapshot
+  uint32 max_len = 2;     // 0 = firmware-chosen chunk
+  uint32 snapshot_id = 3; // 0 = open new snapshot; else must match the open one
+}
+
+message StatsChunk {
+  uint32 snapshot_id = 1;
+  uint32 total_len = 2;
+  uint32 offset = 3;
+  bytes data = 4;
+}
