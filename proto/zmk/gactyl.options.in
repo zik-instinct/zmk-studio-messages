@@ -2,3 +2,5 @@ zmk.gactyl.SignChallengeRequest.nonce max_size:32
 zmk.gactyl.SignChallengeRequest.audience max_size:64
 zmk.gactyl.SignChallengeResponse.mac max_size:32 fixed_length:true
 zmk.gactyl.StatsChunk.data max_size:512
+zmk.gactyl.DeviceProfile.build_sha max_size:41
+zmk.gactyl.DeviceProfile.build_time max_size:25

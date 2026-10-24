@@ -23,6 +23,7 @@ message Request {
     StatsRequest get_stats = 9;
     bool clear_stats = 10;
     bool save_stats = 11;
+    GetDeviceProfileRequest get_device_profile = 12;
   }
 }
 
@@ -39,6 +40,7 @@ message Response {
     StatsChunk get_stats = 9;
     bool clear_stats = 10;
     bool save_stats = 11;
+    GetDeviceProfileResponse get_device_profile = 12;
   }
 }
 
@@ -105,4 +107,51 @@ message StatsChunk {
   uint32 total_len = 2;
   uint32 offset = 3;
   bytes data = 4;
+}
+
+// ---- Device profile (schema v2, features bit4) ----
+// SECURED. local is always filled by the answering half. peer is the central's
+// cached read of the peripheral over the split link; valid only when
+// peer_state == CACHED. Peripherals do not serve Studio RPC: on the right half
+// the same data is exposed read-only over the split GATT characteristic
+// (see gactyl_profile.c for the wire blob layout).
+
+enum ProfileTarget {
+  ZMK_GACTYL_PROFILE_TARGET_BOTH = 0;
+  ZMK_GACTYL_PROFILE_TARGET_LEFT = 1;
+  ZMK_GACTYL_PROFILE_TARGET_RIGHT = 2;
+}
+
+enum PeerState {
+  ZMK_GACTYL_PEER_STATE_UNKNOWN = 0;       // not central, never attempted, or read failed
+  ZMK_GACTYL_PEER_STATE_CACHED = 1;        // peer field is a valid cached read
+  ZMK_GACTYL_PEER_STATE_DISCONNECTED = 2;  // no split link
+  ZMK_GACTYL_PEER_STATE_PENDING = 3;       // connected, read in flight; client retries shortly
+}
+
+message GetDeviceProfileRequest {
+  ProfileTarget target = 1; // BOTH (default) or RIGHT includes peer when cached; LEFT = local only
+}
+
+message DeviceProfile {
+  Side side = 1;
+  uint32 device_id_hi = 2; // FICR DEVICEID[1]
+  uint32 device_id_lo = 3; // FICR DEVICEID[0]
+  bool sd_present = 4;     // MBR SD magic 0x51B1E5DB present at 0x3004
+  uint32 sd_magic = 5;     // raw u32 at 0x3004
+  uint32 sd_fwid = 6;      // raw u32 at 0x300C (S140 6.1.1: 0xB6)
+  uint32 sd_size = 7;      // raw u32 at 0x3008
+  uint32 app_start = 8;    // sd_size when sd_present, else 0x1000 (MBR-only)
+  // Informational only: clients MUST gate direct writes on sd_present &&
+  // sd_magic==0x51B1E5DB && app_start matches the verified image start; never use this as an erase probe.
+  string build_sha = 9;    // <= 40 hex chars; "" when not CI-generated
+  string build_time = 10;  // <= 24 chars ISO-8601 UTC; "" when unknown (always "" for peer)
+  uint32 build_run = 11;   // CI run NUMBER (not run id); 0 when unknown
+}
+
+message GetDeviceProfileResponse {
+  DeviceProfile local = 1;
+  DeviceProfile peer = 2;    // valid only when peer_state == ZMK_GACTYL_PEER_STATE_CACHED
+  PeerState peer_state = 3;
+  uint32 peer_age_ms = 4;    // cache age in ms; 0 when not CACHED
 }
