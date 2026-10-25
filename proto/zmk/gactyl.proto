@@ -147,6 +147,18 @@ message DeviceProfile {
   string build_sha = 9;    // <= 40 hex chars; "" when not CI-generated
   string build_time = 10;  // <= 24 chars ISO-8601 UTC; "" when unknown (always "" for peer)
   uint32 build_run = 11;   // CI run NUMBER (not run id); 0 when unknown
+  // Read-only installed-bootloader evidence (additive). All default to unknown
+  // (0 / "") and MUST be treated as unknown, never guessed, when absent.
+  // bl_version_reg: raw NRF_TIMER2->CC[0] captured before kernel init. The
+  // Adafruit bootloader stores (MAJOR<<16)|(MINOR<<8)|PATCH there. Raw value,
+  // not validated by firmware; clients must range-check it.
+  uint32 bl_version_reg = 12;
+  // Parsed from the first "UF2 Bootloader " string literal in the bootloader
+  // flash region (same text the bootloader serves as INFO_UF2.TXT). Printable
+  // ASCII only, bounded; "" when not found. Never used as an erase probe.
+  string bl_version = 13;  // text after "UF2 Bootloader ", up to first space/CR/LF
+  string bl_model = 14;    // "Model: " line
+  string bl_board_id = 15; // "Board-ID: " line
 }
 
 message GetDeviceProfileResponse {
