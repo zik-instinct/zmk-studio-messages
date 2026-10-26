@@ -24,7 +24,8 @@ message Request {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileRequest get_device_profile = 12;
-    bool get_battery_levels = 13;
+    // Field 13 is reserved for the held resume-session branch; do not allocate it on main.
+    bool get_battery_levels = 14;
   }
 }
 
@@ -42,7 +43,8 @@ message Response {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileResponse get_device_profile = 12;
-    GetBatteryLevelsResponse get_battery_levels = 13;
+    // Field 13 is reserved for the held resume-session branch; do not allocate it on main.
+    GetBatteryLevelsResponse get_battery_levels = 14;
   }
 }
 
