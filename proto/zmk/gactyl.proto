@@ -24,6 +24,7 @@ message Request {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileRequest get_device_profile = 12;
+    bool get_battery_levels = 13;
   }
 }
 
@@ -41,6 +42,7 @@ message Response {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileResponse get_device_profile = 12;
+    GetBatteryLevelsResponse get_battery_levels = 13;
   }
 }
 
@@ -166,4 +168,29 @@ message GetDeviceProfileResponse {
   DeviceProfile peer = 2;    // valid only when peer_state == ZMK_GACTYL_PEER_STATE_CACHED
   PeerState peer_state = 3;
   uint32 peer_age_ms = 4;    // cache age in ms; 0 when not CACHED
+}
+
+// ---- Battery levels (schema v2, features bit5) ----
+// UNSECURED like get_capabilities: the same levels are already exposed to any
+// connected host over the standard BLE Battery Service. Answering half always
+// fills local from its own sensor events; the central additionally fills peer
+// from the last level fetched over the split link
+// (CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING). Every value is
+// state-tagged: absent/zero fields are never a reading.
+
+enum BatteryState {
+  ZMK_GACTYL_BATTERY_STATE_UNKNOWN = 0;      // no reading seen yet this boot
+  ZMK_GACTYL_BATTERY_STATE_OK = 1;           // percent and age_ms are valid
+  ZMK_GACTYL_BATTERY_STATE_DISCONNECTED = 2; // peer only: no split link
+}
+
+message BatteryLevel {
+  BatteryState state = 1;
+  uint32 percent = 2; // 0..100, valid when state == ZMK_GACTYL_BATTERY_STATE_OK
+  uint32 age_ms = 3;  // ms since the answering half last saw this level update
+}
+
+message GetBatteryLevelsResponse {
+  BatteryLevel local = 1; // the answering half's own battery
+  BatteryLevel peer = 2;  // central only: peripheral's last fetched level
 }
