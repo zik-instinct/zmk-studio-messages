@@ -24,6 +24,7 @@ message Request {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileRequest get_device_profile = 12;
+    ResumeSessionRequest resume_session = 13;
   }
 }
 
@@ -41,6 +42,7 @@ message Response {
     bool clear_stats = 10;
     bool save_stats = 11;
     GetDeviceProfileResponse get_device_profile = 12;
+    bool resume_session = 13;
   }
 }
 
@@ -76,6 +78,15 @@ message SignChallengeResponse {
 
 message ResetToBootloaderRequest {
   Side target = 1; // LEFT: direct; RIGHT: split-BLE invoke, meta error if unlinked
+  // Optional, LEFT only: exactly 32 random bytes from this Studio session. The firmware stores only a
+  // hash and allows ONE unlock with it for a short window after the next boot. Empty = no resume.
+  bytes resume_nonce = 2;
+}
+
+// UNSECURED (the keyboard is locked after reboot). Unlocks only if a stored resume record was armed
+// at this boot and the nonce matches; single use, short window, limited tries. Response true = unlocked.
+message ResumeSessionRequest {
+  bytes nonce = 1; // exactly 32 bytes
 }
 
 message Timings {

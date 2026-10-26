@@ -7,3 +7,5 @@ zmk.gactyl.DeviceProfile.build_time max_size:25
 zmk.gactyl.DeviceProfile.bl_version max_size:25
 zmk.gactyl.DeviceProfile.bl_model max_size:33
 zmk.gactyl.DeviceProfile.bl_board_id max_size:33
+zmk.gactyl.ResetToBootloaderRequest.resume_nonce max_size:32
+zmk.gactyl.ResumeSessionRequest.nonce max_size:32
