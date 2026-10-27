@@ -216,12 +216,22 @@ message ThreadStackStat {
 
 message HeapStats {
   uint32 arena_size = 1;    // total pool bytes reserved for this heap
-  uint32 allocated = 2;     // currently allocated; valid only when has_live_stats
-  uint32 max_allocated = 3; // high-water allocated; valid only when has_live_stats
-  bool has_live_stats = 4;  // false: firmware cannot read live counters for this pool
+  // Live counters are REQUESTED bytes (sum of caller size args) for observed
+  // wrapped-family libc allocations only: allocator headers, alignment and
+  // any unwrapped bypass path are excluded. Never subtract from arena_size
+  // to display "free RAM".
+  uint32 allocated = 2;     // live requested bytes; valid only when has_live_stats
+  uint32 max_allocated = 3; // high-water requested bytes; valid only when has_live_stats
+  bool has_live_stats = 4;  // false: no live counters, or accounting was
+                            // invalidated (map overflow/unknown free) - sticky
+                            // until reboot; treat counters as incomplete
 }
 
 message GetMemoryStatsResponse {
+  // Fields 1-4 (per-thread stack high-water) are currently reported as ZERO:
+  // the scan requires k_thread_foreach, which walks every stack byte-wise
+  // with interrupts disabled, and its worst-case IRQ-latency cost is
+  // unmeasured. Do not expose them until on-device timing proves safety.
   uint32 thread_count = 1;        // threads actually running (may exceed threads' length)
   uint32 stack_total_size = 2;    // sum of stack_size over all running threads
   uint32 stack_total_max_used = 3;// sum of max_used over all running threads
