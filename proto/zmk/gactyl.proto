@@ -26,6 +26,7 @@ message Request {
     GetDeviceProfileRequest get_device_profile = 12;
     // Field 13 is reserved for the held resume-session branch; do not allocate it on main.
     bool get_battery_levels = 14;
+    bool get_memory_stats = 15;
   }
 }
 
@@ -45,6 +46,7 @@ message Response {
     GetDeviceProfileResponse get_device_profile = 12;
     // Field 13 is reserved for the held resume-session branch; do not allocate it on main.
     GetBatteryLevelsResponse get_battery_levels = 14;
+    GetMemoryStatsResponse get_memory_stats = 15;
   }
 }
 
@@ -195,4 +197,35 @@ message BatteryLevel {
 message GetBatteryLevelsResponse {
   BatteryLevel local = 1; // the answering half's own battery
   BatteryLevel peer = 2;  // central only: peripheral's last fetched level
+}
+
+// ---- Live memory (schema v2, features bit7) ----
+// SECURED: no secrets, but only meaningful to an unlocked owner. Runtime
+// snapshot of the answering half's own RAM: per-thread stack high-water marks
+// (bytes ever used since boot, from INIT_STACKS pattern scan) and the libc
+// malloc pool. These are high-water/current counters, not an instantaneous
+// whole-RAM free measurement: static allocations (BSS/data) are compile-time
+// and reported separately by the build memory report.
+
+message ThreadStackStat {
+  string name = 1;        // thread name (CONFIG_THREAD_NAME); "" when unnamed
+  uint32 thread_id = 2;   // k_thread pointer value, identity only (not stable across boots)
+  uint32 stack_size = 3;  // configured stack bytes
+  uint32 max_used = 4;    // high-water bytes used since boot (stack_size - lowest free)
+}
+
+message HeapStats {
+  uint32 arena_size = 1;    // total pool bytes reserved for this heap
+  uint32 allocated = 2;     // currently allocated; valid only when has_live_stats
+  uint32 max_allocated = 3; // high-water allocated; valid only when has_live_stats
+  bool has_live_stats = 4;  // false: firmware cannot read live counters for this pool
+}
+
+message GetMemoryStatsResponse {
+  uint32 thread_count = 1;        // threads actually running (may exceed threads' length)
+  uint32 stack_total_size = 2;    // sum of stack_size over all running threads
+  uint32 stack_total_max_used = 3;// sum of max_used over all running threads
+  repeated ThreadStackStat threads = 4; // biggest stacks first; capped by firmware
+  HeapStats malloc_pool = 5;      // libc malloc arena (spans RAM after static allocations)
+  uint32 kernel_heap_size = 6;    // CONFIG_HEAP_MEM_POOL_SIZE; 0 = no kernel heap
 }
